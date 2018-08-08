@@ -1,4 +1,5 @@
 import datetime
+import random
 
 import tkinter as tk
 
@@ -35,30 +36,91 @@ class SimulatorPixel(Pixel):
         return f'#{red:02x}{green:02x}{blue:02x}'
 
 
-class Animation(BaseAnimation):
-    def __init__(self):
+class BlinkingAnimation(BaseAnimation):
+    def setup(self):
         self.brightness = 0
-        self.brightness_increasing = True
+        self.total_time = 0
+        self.row = 0
+        self.col = 0
+        self.brightness_vector = 10
 
     def update(self, display, delta):
+        self.total_time += delta.total_seconds()
         display.clear()
-        p = display.pixel_at(0, 0)
+        p = display.pixel_at(self.row, self.col)
         p.brightness = self.brightness
         p.blue = 255
 
-        if self.brightness_increasing:
-            self.brightness += 10
-            if self.brightness >= 255:
-                self.brightness = 255
-                self.brightness_increasing = False
-        else:
-            self.brightness -= 10
-            if self.brightness <= 0:
-                self.brightness = 0
-                self.brightness_increasing = True
+        self.brightness += self.brightness_vector
+        if self.brightness > 255:
+            self.brightness = 255
+            self.brightness_vector = -self.brightness_vector
+        elif self.brightness < 0:
+            self.brightness = 0
+            self.brightness_vector = -self.brightness_vector
+            self.new_pixel(display)
+
+    def new_pixel(self, display):
+        self.row = random.randint(0, display.num_rows - 1)
+        self.col = random.randint(0, display.num_cols - 1)
 
     def is_done(self):
-        return False
+        return self.total_time > 30
+
+
+class OtherAnimation(BaseAnimation):
+    def setup(self):
+        self.row = 0
+        self.col = 0
+        self.vector = (1, 1)
+        self.time_elapsed = 0
+        self.total_time = 0
+
+    def update(self, display, delta):
+        seconds = delta.total_seconds()
+        self.time_elapsed += seconds
+        self.total_time += seconds
+        if self.time_elapsed < 0.3:
+            return
+        self.time_elapsed = 0
+
+        display.clear()
+        p = display.pixel_at(self.row, self.col)
+        p.brightness = 255
+        p.blue = 255
+
+        self.row += self.vector[0]
+        self.col += self.vector[1]
+
+        if self.row > display.num_rows - 1:
+            self.row = display.num_rows - 1
+            self.vector = -self.vector[0], self.vector[1] + random.randint(-1, 1)
+        elif self.row < 0:
+            self.row = 0
+            self.vector = -self.vector[0], self.vector[1] + random.randint(-1, 1)
+
+        if self.col > display.num_cols - 1:
+            self.col = display.num_cols - 1
+            self.vector = self.vector[0] + random.randint(-1, 1), -self.vector[1]
+        elif self.col < 0:
+            self.col = 0
+            self.vector = self.vector[0] + random.randint(-1, 1), -self.vector[1]
+
+        if self.vector == (0, 0):
+            self.vector = random.randint(-1, 1), random.randint(-1, 1)
+
+        if self.vector[0] > 2:
+            self.vector = 2, self.vector[1]
+        elif self.vector[0] < -2:
+            self.vector = -2, self.vector[1]
+
+        if self.vector[1] > 2:
+            self.vector = self.vector[0], 2
+        elif self.vector[1] < -2:
+            self.vector = self.vector[0], -2
+
+    def is_done(self):
+        return self.total_time > 30
 
 
 class App(tk.Tk):
@@ -75,7 +137,7 @@ class App(tk.Tk):
 
         self._animations = animations
         self.display = SimulatorDisplay(self.rows, self.columns)
-        self.tick_rate = 1
+        self.tick_rate = 10
 
         self.oval = {}
         for column in range(self.columns):
@@ -102,6 +164,7 @@ class App(tk.Tk):
     def get_current_animation(self):
         while True:
             for animation in self._animations:
+                animation.setup()
                 while not animation.is_done():
                     yield animation
 
@@ -120,5 +183,5 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
-    app = App([Animation()])
+    app = App([OtherAnimation(), BlinkingAnimation()])
     app.mainloop()

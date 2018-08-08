@@ -121,6 +121,9 @@ class Pixel(object):
 
 
 class Animation:
+    def setup(self):
+        pass
+
     def update(self, display, delta):
         raise NotADirectoryError()
 
