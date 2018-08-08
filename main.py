@@ -20,6 +20,6 @@ def blinkin():
             time.sleep(0.05)
 
 try:
-    pass
+    blinkin()
 except KeyboardInterrupt:
     d.clear()
